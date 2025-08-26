@@ -1,5 +1,5 @@
 import { auth, db, doc, getDoc, setDoc, writeBatch, onAuthStateChanged } from './app.js';
-import { showLoader, hideLoader, showError } from './ui.js';
+import { showLoader, hideLoader, showError, showToast } from './ui.js';
 
 const monthPicker=document.getElementById('monthPicker');
 const rateEl=document.getElementById('hourlyRate');
@@ -64,7 +64,7 @@ document.getElementById('btnLoad').addEventListener('click', async ()=>{
       if(s.exists()){ const x=s.data(); const tr=rows[i-1]; tr.querySelector('.off').checked=!!x.dayOff;
         tr.querySelector('.mi').value=x.morningIn||''; tr.querySelector('.mo').value=x.morningOut||''; tr.querySelector('.ei').value=x.eveningIn||''; tr.querySelector('.eo').value=x.eveningOut||''; }
     }
-    recalc(); alert('Month loaded ✅');
+    recalc(); showToast('Mese caricato ✅');
   }catch(e){ showError(e.message); }
   finally{ hideLoader(); }
 });
@@ -82,12 +82,11 @@ document.getElementById('btnSave').addEventListener('click', async ()=>{
       wb.set(ref,{ uid:u.uid,date,dayOff:off,morningIn:mi,morningOut:mo,eveningIn:ei,eveningOut:eo,hourlyRate:r,totalHours:h,totalPay:p,updatedAt:Date.now() },{merge:true});
     });
     await wb.commit(); await setDoc(doc(db,`users/${u.uid}`),{hourlyRate:r},{merge:true});
-    alert('Month saved ✅');
+    showToast('Mese salvato ✅');
   }catch(e){ showError(e.message); }
   finally{ hideLoader(); }
 });
 
-import { onAuthStateChanged, getDoc, setDoc } from './app.js';
 onAuthStateChanged(auth, async (user)=>{
   try{
     if(!user){ window.location.href='index.html'; return; }

@@ -1,9 +1,12 @@
 <!doctype html>
 <html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title data-i18n="app_title">AlleOClockCalc</title><link rel="stylesheet" href="css/style.css"></head>
+<title>AlleOClockCalc</title><link rel="stylesheet" href="css/style.css"></head>
 <body>
 <header class="app-header">
-  <h1 data-i18n="app_title">AlleOClockCalc</h1>
+  <div style="display:flex;gap:8px;align-items:center">
+    <h1 data-i18n="app_title" style="margin:0">AlleOClockCalc</h1>
+    <button id="themeToggle" class="chip">🌓</button>
+  </div>
   <nav class="nav">
     <a href="daily.html" class="requires-auth disabled" data-i18n="nav_daily">Giornaliero</a>
     <a href="monthly.html" class="requires-auth disabled" data-i18n="nav_monthly">Mensile</a>
@@ -11,9 +14,7 @@
     <a href="employer.html" class="requires-auth disabled" data-i18n="nav_employer">Dashboard Datore</a>
     <a href="guide.html" data-i18n="nav_guide">Guida</a>
     <div class="lang-switch">
-      <select id="langSel">
-        <option value="it">IT</option><option value="en">EN</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option>
-      </select>
+      <select id="langSel"><option value="it">IT</option><option value="en">EN</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option></select>
     </div>
   </nav>
 </header>
@@ -26,12 +27,12 @@
     <label><span data-i18n="role_label">Ruolo</span>
       <select id="role"><option value="employee" data-i18n="role_employee">Lavoratore</option><option value="employer" data-i18n="role_employer">Datore</option></select>
     </label>
-    <label><span data-i18n="employer_code_opt">Codice Datore (opzionale)</span><input type="text" id="empCode" placeholder="ABCD1234"></label>
+    <label><span data-i18n="employer_code_opt">Codice Datore (opz.)</span><input type="text" id="empCode" placeholder="ABCD1234"></label>
     <div class="grid grid-2">
       <button id="btnSignIn" data-i18n="sign_in">Accedi</button>
       <button id="btnSignUp" class="secondary" data-i18n="sign_up">Registrati</button>
     </div>
-    <button id="btnGoogle" class="google" data-i18n="sign_google">Accedi con Google</button>
+    <button id="btnGoogle" class="secondary" data-i18n="sign_google">Accedi con Google</button>
   </div>
 
   <div class="card auth-required" style="display:none; margin-top:12px">
@@ -41,11 +42,13 @@
   </div>
 </main>
 <div id="loader" class="hidden"><div class="spinner"></div></div>
-<div id="errorBanner"></div>
+<div id="toastWrap"></div>
 <script type="module">
+  import * as theme from './js/theme.js';
   import { loadI18n, applyI18n, currentLang, setLang } from './js/i18n.js';
-  import './js/app.js'; import './js/auth.js';
+  document.getElementById('themeToggle').addEventListener('click', ()=> theme.toggleTheme());
   const sel=document.getElementById('langSel'); sel.value=currentLang(); sel.addEventListener('change', e=> setLang(e.target.value));
   (async()=> applyI18n(await loadI18n(currentLang())))();
 </script>
+<script type="module">import './js/app.js'; import './js/auth.js';</script>
 </body></html>

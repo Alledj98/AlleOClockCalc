@@ -1,6 +1,6 @@
 import { auth, db, doc, getDoc, setDoc, collection, getDocs, query, where, orderBy } from './app.js';
-import { showLoader, hideLoader, showError } from './ui.js';
 import { httpsCallable, fns, storage, ref, uploadString, getDownloadURL } from './app.js';
+import { showLoader, hideLoader, showError, showToast } from './ui.js';
 
 const fromEl=document.getElementById('fromMonth');
 const toEl=document.getElementById('toMonth');
@@ -53,12 +53,13 @@ async function loadData(){
     const qref=query(collection(db,`users/${u.uid}/entries`), where('date','>=',start), where('date','<=',end), orderBy('date','asc'));
     const snaps=await getDocs(qref); cacheEntries=snaps.docs.map(d=>d.data());
     render(cacheEntries);
+    showToast('Dati caricati');
   }catch(e){ showError(e.message); }
   finally{ hideLoader(); }
 }
 
 function genPDF(){
-  if(!cacheEntries.length){ showError('Load data first'); return; }
+  if(!cacheEntries.length){ showError('Carica i dati prima'); return; }
   const { jsPDF } = window.jspdf; const doc=new jsPDF({unit:'pt',format:'a4'});
   doc.setFontSize(16); doc.text('AlleOClockCalc - Hours report',40,40);
   const {start,end}=ymRange(); doc.setFontSize(10); doc.text(`Range: ${start} → ${end}`,40,60);
@@ -69,10 +70,11 @@ function genPDF(){
   const dataUri = doc.output('datauristring');
   pdfBase64 = dataUri.split(',')[1];
   doc.save('alleoclockcalc-report.pdf');
+  showToast('PDF generato ✅');
 }
 
 async function uploadPDF(){
-  if(!pdfBase64){ showError('Generate PDF first'); return; }
+  if(!pdfBase64){ showError('Genera PDF prima'); return; }
   const uid = auth.currentUser?.uid || 'anonymous';
   const fn = `report-${Date.now()}.pdf`;
   showLoader();
@@ -87,15 +89,23 @@ async function uploadPDF(){
       createdAt: Date.now(), fromMonth: start.slice(0,7), toMonth: end.slice(0,7),
       totalHours: H, totalPay: P, pdfUrl, storagePath: pdfStoragePath
     });
-    alert(document.querySelector('[data-i18n="history_saved"]')?.textContent || 'PDF history saved');
+    showToast('Caricato su Storage ✅');
   }catch(e){ showError(e.message); }
   finally{ hideLoader(); }
 }
 
-async function sendEmail(){
+async function sendEmail(e){
   const u=auth.currentUser; if(!u) return;
-  const to=employerEmail.value.trim(); if(!to){ showError('Set employer email'); return; }
-  if(!pdfBase64 && !pdfUrl){ showError('Generate PDF or upload first'); return; }
+  if (e && e.ctrlKey) {
+    try{
+      const test = httpsCallable(fns,'smtpTest');
+      const res = await test({});
+      showToast(res.data?.ok ? 'SMTP OK ✅' : 'SMTP non configurato', res.data?.ok?'ok':'warn');
+    }catch(err){ showError(err.message); }
+    return;
+  }
+  const to=employerEmail.value.trim(); if(!to){ showError('Imposta email del datore'); return; }
+  if(!pdfBase64 && !pdfUrl){ showError('Genera o carica il PDF prima'); return; }
   showLoader();
   try{
     const call=httpsCallable(fns,'sendTimesheet');
@@ -113,38 +123,39 @@ async function sendEmail(){
       const id = `${u.uid}_${Date.now()}`;
       await setDoc(doc(db,`employers/${employerUid}/submissions/${id}`), meta);
     }
-    // store always in user's pdfs as well (if not already uploaded)
     await setDoc(doc(db,`users/${u.uid}/pdfs/${Date.now()}`), meta);
-    alert('Email sent ✅');
-  }catch(e){ showError(e.message); }
+    showToast('Email inviata ✅');
+  }catch(err){ showError(err.message); }
   finally{ hideLoader(); }
 }
 
 function exportCSV(){
-  if(!cacheEntries.length){ showError('Load data first'); return; }
+  if(!cacheEntries.length){ showError('Carica i dati prima'); return; }
   const rows = rowsForExport();
   const csv = rows.map(r=> r.map(v=> /[",\n]/.test(v)? '"'+String(v).replace(/"/g,'""')+'"' : v).join(',')).join('\n');
   const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href=url; a.download='alleoclockcalc-report.csv'; a.click();
   URL.revokeObjectURL(url);
+  showToast('CSV esportato');
 }
 
 function exportExcel(){
-  if(!cacheEntries.length){ showError('Load data first'); return; }
+  if(!cacheEntries.length){ showError('Carica i dati prima'); return; }
   const rows = rowsForExport();
   const ws = XLSX.utils.aoa_to_sheet(rows);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Report');
   XLSX.writeFile(wb, 'alleoclockcalc-report.xlsx');
+  showToast('Excel esportato');
 }
 
-document.getElementById('btnLoad').addEventListener('click', loadData);
-document.getElementById('btnPDF').addEventListener('click', genPDF);
-document.getElementById('btnUpload').addEventListener('click', uploadPDF);
-document.getElementById('btnSend').addEventListener('click', sendEmail);
-document.getElementById('btnCSV').addEventListener('click', exportCSV);
-document.getElementById('btnExcel').addEventListener('click', exportExcel);
+btnLoad.addEventListener('click', loadData);
+btnPDF.addEventListener('click', genPDF);
+btnUpload.addEventListener('click', uploadPDF);
+btnSend.addEventListener('click', sendEmail);
+btnCSV.addEventListener('click', exportCSV);
+btnExcel.addEventListener('click', exportExcel);
 
 import { onAuthStateChanged } from './app.js';
 onAuthStateChanged(auth, async (user)=>{

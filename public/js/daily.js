@@ -1,5 +1,5 @@
 import { auth, db, doc, getDoc, setDoc, onAuthStateChanged } from './app.js';
-import { showLoader, hideLoader, showError } from './ui.js';
+import { showLoader, hideLoader, showError, showToast } from './ui.js';
 
 const dateEl = document.getElementById('date');
 const rateEl = document.getElementById('hourlyRate');
@@ -31,7 +31,7 @@ document.getElementById('btnSave').addEventListener('click', async ()=>{
     showLoader();
     await setDoc(doc(db,`users/${u.uid}/entries/${d}`),{ uid:u.uid,date:d, dayOff:dayOffEl.checked, morningIn:mInEl.value||null, morningOut:mOutEl.value||null, eveningIn:eInEl.value||null, eveningOut:eOutEl.value||null, hourlyRate:rate, totalHours:hours, totalPay:pay, updatedAt:Date.now() },{merge:true});
     await setDoc(doc(db,`users/${u.uid}`),{hourlyRate:rate},{merge:true});
-    alert('Saved ✅');
+    showToast('Giorno salvato ✅');
   }catch(e){ showError(e.message); }
   finally{ hideLoader(); }
 });
@@ -40,7 +40,7 @@ document.getElementById('btnLoad').addEventListener('click', async ()=>{
   try{
     const u=auth.currentUser; if(!u) return; const d=dateEl.value; showLoader();
     const s=await getDoc(doc(db,`users/${u.uid}/entries/${d}`));
-    if(!s.exists()){ alert('No data for this date'); return; }
+    if(!s.exists()){ showToast('Nessun dato per questa data','warn'); return; }
     const x=s.data(); dayOffEl.checked=!!x.dayOff; mInEl.value=x.morningIn||''; mOutEl.value=x.morningOut||''; eInEl.value=x.eveningIn||''; eOutEl.value=x.eveningOut||''; rateEl.value=x.hourlyRate ?? 10; recalc();
   }catch(e){ showError(e.message); }
   finally{ hideLoader(); }

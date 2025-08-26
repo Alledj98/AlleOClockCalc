@@ -1,34 +1,37 @@
 <!doctype html>
 <html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Guida all'uso · AlleOClockCalc</title>
-<link rel="stylesheet" href="css/style.css">
-<style>main{max-width:900px}</style>
-</head><body>
-<header class="app-header"><h1>Guida all'uso · AlleOClockCalc</h1></header>
+<title>Guida · AlleOClockCalc</title><link rel="stylesheet" href="css/style.css"></head>
+<body>
+<header class="app-header">
+  <div style="display:flex;gap:8px;align-items:center">
+    <h1 data-i18n="app_title" style="margin:0">AlleOClockCalc</h1>
+    <button id="themeToggle" class="chip">🌓</button>
+  </div>
+  <nav class="nav">
+    <a href="daily.html" class="requires-auth disabled" data-i18n="nav_daily">Giornaliero</a>
+    <a href="monthly.html" class="requires-auth disabled" data-i18n="nav_monthly">Mensile</a>
+    <a href="report.html" class="requires-auth disabled" data-i18n="nav_reports">Report & PDF</a>
+    <a href="employer.html" class="requires-auth disabled" data-i18n="nav_employer">Dashboard Datore</a>
+    <a href="guide.html" data-i18n="nav_guide">Guida</a>
+    <div class="lang-switch">
+      <select id="langSel"><option value="it">IT</option><option value="en">EN</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option></select>
+    </div>
+  </nav>
+</header>
 <main class="container">
-<h2>Per i Lavoratori</h2>
-<ol>
-<li><b>Registrazione/Accesso</b>: scegli “Lavoratore”. Se hai un <i>Codice Datore</i>, inseriscilo (puoi impostarlo anche dopo dalla Home).</li>
-<li><b>Giornaliero</b>: inserisci orari (mattina/sera), supporta notturni (es. 20:00→01:00). Spunta “Giorno libero” se necessario. Salva/Carica.</li>
-<li><b>Mensile</b>: compila tutti i giorni (28/29/30/31 automatico), calcolo ore/€ e salva su Firestore.</li>
-<li><b>Report</b>: seleziona periodo, <i>Carica dati</i>, quindi <i>Genera PDF</i>. Puoi <i>Caricare su Storage</i> (ottieni link), <i>Inviare via email</i> al datore, ed <i>Esportare</i> in CSV/Excel.</li>
-<li><b>Storico PDF</b>: ogni upload/invio salva una voce in <code>users/&lt;uid&gt;/pdfs</code> con link e data.</li>
-</ol>
-
-<h2>Per i Datori</h2>
-<ol>
-<li><b>Registrazione</b>: scegli “Datore”. Il sistema genera un <b>Codice Datore</b> visibile nella <i>Dashboard Datore</i>.</li>
-<li><b>Condivisione Codice</b>: invialo ai tuoi lavoratori. Quando loro lo impostano, i loro invii saranno collegati a te.</li>
-<li><b>Ricezione</b>: vedi gli invii in <i>Dashboard Datore</i> solo quando il lavoratore invia il report (non in tempo reale).</li>
-</ol>
-
-<h2>Note tecniche</h2>
-<ul>
-<li>Firestore: i dati giornalieri restano privati nel profilo del lavoratore; il datore vede solo le <i>submission</i> al momento dell'invio.</li>
-<li>Regole di sicurezza: accesso ristretto per utente/datore sul proprio spazio.</li>
-<li>Invio email: via Cloud Functions + SMTP (Password per app Gmail).</li>
-</ul>
-
-<p><i>Consiglio:</i> usa “Stampa → Salva come PDF” per esportare questa guida.</p>
+  <div class="card"><h2>Guida all'uso</h2>
+  <p>• Lavoratore: compila Giornaliero/Mensile, genera PDF dal Report. Puoi caricarlo su Storage, inviarlo via email (tester SMTP con <b>Ctrl+Click</b>) ed esportare CSV/Excel.<br>
+  • Datore: registrati come Datore, copia il tuo codice e condividilo. Vedi gli invii nella Dashboard.</p>
+  <p>Nota: i dati giornalieri restano privati al lavoratore; il datore vede solo gli invii.</p></div>
 </main>
+<div id="loader" class="hidden"><div class="spinner"></div></div>
+<div id="toastWrap"></div>
+<script type="module">
+  import * as theme from './js/theme.js';
+  import { loadI18n, applyI18n, currentLang, setLang } from './js/i18n.js';
+  document.getElementById('themeToggle').addEventListener('click', ()=> theme.toggleTheme());
+  const sel=document.getElementById('langSel'); sel.value=currentLang(); sel.addEventListener('change', e=> setLang(e.target.value));
+  (async()=> applyI18n(await loadI18n(currentLang())))();
+</script>
+
 </body></html>

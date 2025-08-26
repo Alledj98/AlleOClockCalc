@@ -17,7 +17,7 @@ service cloud.firestore {
 
     match /codes/{code} {
       allow read: if isSignedIn();
-      allow write: if isSignedIn(); // tighten with custom claims if desired
+      allow write: if isSignedIn();
     }
   }
 }

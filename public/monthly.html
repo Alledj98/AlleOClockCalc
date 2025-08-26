@@ -1,9 +1,12 @@
 <!doctype html>
 <html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title data-i18n="monthly_title">Mensile · AlleOClockCalc</title><link rel="stylesheet" href="css/style.css"></head>
+<title>Mensile · AlleOClockCalc</title><link rel="stylesheet" href="css/style.css"></head>
 <body>
 <header class="app-header">
-  <h1 data-i18n="app_title">AlleOClockCalc</h1>
+  <div style="display:flex;gap:8px;align-items:center">
+    <h1 data-i18n="app_title" style="margin:0">AlleOClockCalc</h1>
+    <button id="themeToggle" class="chip">🌓</button>
+  </div>
   <nav class="nav">
     <a href="daily.html" class="requires-auth disabled" data-i18n="nav_daily">Giornaliero</a>
     <a href="monthly.html" class="requires-auth disabled" data-i18n="nav_monthly">Mensile</a>
@@ -11,9 +14,7 @@
     <a href="employer.html" class="requires-auth disabled" data-i18n="nav_employer">Dashboard Datore</a>
     <a href="guide.html" data-i18n="nav_guide">Guida</a>
     <div class="lang-switch">
-      <select id="langSel">
-        <option value="it">IT</option><option value="en">EN</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option>
-      </select>
+      <select id="langSel"><option value="it">IT</option><option value="en">EN</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option></select>
     </div>
   </nav>
 </header>
@@ -22,7 +23,7 @@
     <div class="grid grid-3">
       <label><span data-i18n="month">Mese</span><input type="month" id="monthPicker"></label>
       <label><span data-i18n="hourly_rate">Paga oraria (€)</span><input type="number" id="hourlyRate" step="0.01"></label>
-      <div class="grid grid-2 no-gap">
+      <div class="grid grid-2">
         <button id="btnLoad" class="secondary" data-i18n="load_month">Carica mese</button>
         <button id="btnSave" data-i18n="save_month">Salva mese</button>
       </div>
@@ -35,11 +36,13 @@
   </div>
 </main>
 <div id="loader" class="hidden"><div class="spinner"></div></div>
-<div id="errorBanner"></div>
+<div id="toastWrap"></div>
 <script type="module">
+  import * as theme from './js/theme.js';
   import { loadI18n, applyI18n, currentLang, setLang } from './js/i18n.js';
-  import './js/app.js'; import './js/auth.js'; import './js/monthly.js';
+  document.getElementById('themeToggle').addEventListener('click', ()=> theme.toggleTheme());
   const sel=document.getElementById('langSel'); sel.value=currentLang(); sel.addEventListener('change', e=> setLang(e.target.value));
   (async()=> applyI18n(await loadI18n(currentLang())))();
 </script>
+<script type="module">import './js/app.js'; import './js/auth.js'; import './js/monthly.js';</script>
 </body></html>

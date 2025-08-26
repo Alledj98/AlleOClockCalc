@@ -1,34 +1,41 @@
-:root{--bg:#0f172a;--card:#111827;--muted:#94a3b8;--accent:#22c55e;--text:#e5e7eb;--btn:#2563eb;--danger:#ef4444}
-*{box-sizing:border-box}html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+:root{
+  --bg:#0f172a; --text:#e5e7eb; --muted:#94a3b8;
+  --card:#111827; --border:#1f2937; --accent:#22c55e; --btn:#2563eb;
+  --danger:#ef4444; --warn:#f59e0b; --ok:#22c55e;
+}
+:root[data-theme='light']{
+  --bg:#f8fafc; --text:#0f172a; --muted:#334155;
+  --card:#ffffff; --border:#e2e8f0; --accent:#16a34a; --btn:#1d4ed8;
+  --danger:#dc2626; --warn:#d97706; --ok:#16a34a;
+}
+*{box-sizing:border-box}html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif}
 .container{max-width:1100px;margin:0 auto;padding:16px}
-.app-header{display:flex;align-items:center;justify-content:space-between;padding:16px;background:#0b1220;border-bottom:1px solid #1f2937;position:sticky;top:0;z-index:10}
-.nav{display:flex;gap:12px;align-items:center}.nav a,.linklike{padding:10px 14px;border-radius:12px;background:#1f2937;color:#fff;text-decoration:none;transition:transform .06s ease, background .2s}.nav a:hover,.linklike:hover{background:#374151;transform:translateY(-1px)}
-.nav a.requires-auth.disabled{opacity:.5;pointer-events:none}
-.card{background:var(--card);border:1px solid #1f2937;border-radius:16px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
-.box{border-radius:12px;padding:12px;margin:12px 0;border:1px solid #1f2937}
-.box.morning{background:#0b2530;border-color:#0ea5a4}
-.box.evening{background:#2a1905;border-color:#f59e0b}
-label{display:flex;flex-direction:column;gap:6px;font-size:14px;color:#cbd5e1}
+.app-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:color-mix(in oklab, var(--bg) 80%, black 10%);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10}
+.nav{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.nav a,.chip{padding:8px 12px;border-radius:12px;background:color-mix(in oklab, var(--bg) 60%, black 15%);color:var(--text);text-decoration:none;border:1px solid var(--border);transition:transform .06s ease, background .2s}
+.nav a:hover,.chip:hover{transform:translateY(-1px);background:color-mix(in oklab, var(--bg) 40%, black 25%)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.15)}
+.box{border-radius:12px;padding:12px;margin:12px 0;border:1px solid var(--border)}
+.box.morning{background:color-mix(in oklab, var(--card) 80%, #0ea5a4 10%)}
+.box.evening{background:color-mix(in oklab, var(--card) 80%, #f59e0b 10%)}
+label{display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--muted)}
 input,select,button{font:inherit}
-input[type=text],input[type=email],input[type=password],input[type=number],input[type=time],input[type=date],input[type=month]{background:#0b1220;color:#fff;border:1px solid #243042;padding:10px;border-radius:10px;outline:none}
-.grid{display:grid;gap:12px}.grid-2{grid-template-columns:repeat(2,1fr)}.grid-3{grid-template-columns:repeat(3,1fr)}.no-gap{gap:8px}
+input[type=text],input[type=email],input[type=password],input[type=number],input[type=time],input[type=date],input[type=month]{background:color-mix(in oklab, var(--bg) 60%, black 15%);color:var(--text);border:1px solid var(--border);padding:10px;border-radius:10px;outline:none}
+.grid{display:grid;gap:12px}.grid-2{grid-template-columns:repeat(2,1fr)}.grid-3{grid-template-columns:repeat(3,1fr)}
 @media (max-width:800px){.grid-2,.grid-3{grid-template-columns:1fr}}
-.table{width:100%;border-collapse:collapse}.table th,.table td{border:1px solid #243042;padding:8px;text-align:center}.table th{background:#0b1220;position:sticky;top:0}
-.summary{margin-top:12px;color:#cbd5e1}
+.table{width:100%;border-collapse:collapse}.table th,.table td{border:1px solid var(--border);padding:8px;text-align:center}.table th{background:color-mix(in oklab, var(--bg) 70%, black 10%);position:sticky;top:0}
+.summary{margin-top:12px;color:var(--muted)}
 button{background:var(--btn);color:#fff;border:none;border-radius:12px;padding:10px 14px;cursor:pointer}
-button.secondary{background:#1f2937;border:1px solid #334155}
+button.secondary{background:transparent;color:var(--text);border:1px solid var(--border)}
 button:disabled{opacity:.6;cursor:not-allowed}
-.google{background:#2563eb}
-.linklike{cursor:pointer;border:none}
-.lang-switch select{background:#0b1220;color:#fff;border:1px solid #334155;border-radius:8px;padding:6px}
-/* auth gating */
+#themeToggle{background:transparent;border:1px solid var(--border);color:var(--text)}
 .auth-required{display:none}
-.show-when-authed{visibility:hidden}
-/* loader */
-#loader{position:fixed;inset:0;background:rgba(8,12,20,.6);display:flex;align-items:center;justify-content:center;z-index:1000}
+#loader{position:fixed;inset:0;background:rgba(8,12,20,.35);backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center;z-index:1000}
 #loader.hidden{display:none}
-.spinner{width:64px;height:64px;border:6px solid #334155;border-top-color:#22c55e;border-radius:50%;animation:spin 0.9s linear infinite}
+.spinner{width:64px;height:64px;border:6px solid color-mix(in oklab, var(--bg) 50%, white 15%);border-top-color:var(--accent);border-radius:50%;animation:spin 0.9s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-/* error banner */
-#errorBanner{position:fixed;left:50%;transform:translateX(-50%);bottom:20px;background:#111827;border:1px solid #2a3342;border-left:6px solid var(--danger);color:#fff;padding:12px 16px;border-radius:12px;min-width:280px;max-width:90vw;z-index:2000;display:none}
-#errorBanner.show{display:block}
+#toastWrap{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:2000}
+.toast{min-width:240px;max-width:360px;background:var(--card);color:var(--text);border:1px solid var(--border);border-left:6px solid var(--ok);padding:10px 12px;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.2);opacity:.98;animation:pop .12s ease-out}
+.toast.error{border-left-color:var(--danger)}
+.toast.warn{border-left-color:var(--warn)}
+@keyframes pop{from{transform:translateY(6px);opacity:.0}to{transform:translateY(0);opacity:.98}}

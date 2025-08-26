@@ -1,7 +1,11 @@
-# AlleOClockCalc — V3
-Funzioni: ruoli (Lavoratore/Datore) con codice datore, i18n IT/EN/FR/DE/ES, salvataggio storico PDF, export CSV/Excel, guida utente, gestione errori UI.
+# AlleOClockCalc — V4 COMPLETE
+- Tester SMTP (Ctrl+Click su “Invia PDF via email”)
+- Toast non invasivi (niente alert)
+- Tema chiaro/scuro (toggle 🌓)
+- Functions con Secret Manager + .env (post-2026 safe)
+- Traduzioni IT/EN/FR/DE/ES
 
-## Deploy rapido
+## Setup
 ```bash
 firebase login
 firebase use alleoclockcalc
@@ -12,21 +16,12 @@ firebase deploy --only storage
 cd functions
 npm install
 cd ..
-firebase functions:config:set \
-  mail.user="alleoclockcalc@gmail.com" \
-  mail.pass="APP_PASSWORD" \
-  mail.host="smtp.gmail.com" \
-  mail.port="465" \
-  mail.secure="true" \
-  mail.from="AlleOClockCalc <alleoclockcalc@gmail.com>"
-firebase deploy --only functions
 
+# Segreti (solo la prima volta)
+firebase functions:secrets:set MAIL_USER   # alleoclockcalc@gmail.com
+firebase functions:secrets:set MAIL_PASS   # password per app SENZA SPAZI
+
+# Deploy functions e hosting
+firebase deploy --only functions
 firebase deploy --only hosting
 ```
-
-## Dove modificare
-- UI/ruoli/codice datore: `public/js/auth.js`, `public/index.html`
-- Report + PDF/CSV/Excel + storico: `public/js/report.js`
-- Dashboard Datore: `public/employer.html`, `public/js/employer.js`
-- i18n: `public/js/i18n.json`
-- Regole: `firestore.rules`

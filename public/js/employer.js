@@ -1,10 +1,10 @@
 import { auth, db, doc, getDoc, collection, getDocs, query, orderBy } from './app.js';
-import { showLoader, hideLoader, showError } from './ui.js';
+import { showLoader, hideLoader, showError, showToast } from './ui.js';
 
 const subsDiv = document.getElementById('subs');
 document.getElementById('btnCopyCode')?.addEventListener('click', ()=>{
   const code = document.getElementById('myEmployerCode')?.textContent || '';
-  navigator.clipboard.writeText(code).then(()=> alert(document.querySelector('[data-i18n="copied"]').textContent || 'Copied!'));
+  navigator.clipboard.writeText(code).then(()=> showToast('Copiato'));
 });
 
 async function loadSubs(){
