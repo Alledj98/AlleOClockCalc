@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Guida all'uso · AlleOClockCalc</title>
+<link rel="stylesheet" href="css/style.css">
+<style>main{max-width:900px}</style>
+</head><body>
+<header class="app-header"><h1>Guida all'uso · AlleOClockCalc</h1></header>
+<main class="container">
+<h2>Per i Lavoratori</h2>
+<ol>
+<li><b>Registrazione/Accesso</b>: scegli “Lavoratore”. Se hai un <i>Codice Datore</i>, inseriscilo (puoi impostarlo anche dopo dalla Home).</li>
+<li><b>Giornaliero</b>: inserisci orari (mattina/sera), supporta notturni (es. 20:00→01:00). Spunta “Giorno libero” se necessario. Salva/Carica.</li>
+<li><b>Mensile</b>: compila tutti i giorni (28/29/30/31 automatico), calcolo ore/€ e salva su Firestore.</li>
+<li><b>Report</b>: seleziona periodo, <i>Carica dati</i>, quindi <i>Genera PDF</i>. Puoi <i>Caricare su Storage</i> (ottieni link), <i>Inviare via email</i> al datore, ed <i>Esportare</i> in CSV/Excel.</li>
+<li><b>Storico PDF</b>: ogni upload/invio salva una voce in <code>users/&lt;uid&gt;/pdfs</code> con link e data.</li>
+</ol>
+
+<h2>Per i Datori</h2>
+<ol>
+<li><b>Registrazione</b>: scegli “Datore”. Il sistema genera un <b>Codice Datore</b> visibile nella <i>Dashboard Datore</i>.</li>
+<li><b>Condivisione Codice</b>: invialo ai tuoi lavoratori. Quando loro lo impostano, i loro invii saranno collegati a te.</li>
+<li><b>Ricezione</b>: vedi gli invii in <i>Dashboard Datore</i> solo quando il lavoratore invia il report (non in tempo reale).</li>
+</ol>
+
+<h2>Note tecniche</h2>
+<ul>
+<li>Firestore: i dati giornalieri restano privati nel profilo del lavoratore; il datore vede solo le <i>submission</i> al momento dell'invio.</li>
+<li>Regole di sicurezza: accesso ristretto per utente/datore sul proprio spazio.</li>
+<li>Invio email: via Cloud Functions + SMTP (Password per app Gmail).</li>
+</ul>
+
+<p><i>Consiglio:</i> usa “Stampa → Salva come PDF” per esportare questa guida.</p>
+</main>
+</body></html>
