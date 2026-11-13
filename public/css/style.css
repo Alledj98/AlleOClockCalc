@@ -1,13 +1,9 @@
+
 :root{
-  --bg:#0f172a; --text:#e5e7eb; --muted:#94a3b8;
-  --card:#111827; --border:#1f2937; --accent:#22c55e; --btn:#2563eb;
+  --bg:#0f172a; --text:#e5e7eb; --muted:#94a3b8; --card:#111827; --border:#1f2937; --accent:#22c55e; --btn:#2563eb;
   --danger:#ef4444; --warn:#f59e0b; --ok:#22c55e;
 }
-:root[data-theme='light']{
-  --bg:#f8fafc; --text:#0f172a; --muted:#334155;
-  --card:#ffffff; --border:#e2e8f0; --accent:#16a34a; --btn:#1d4ed8;
-  --danger:#dc2626; --warn:#d97706; --ok:#16a34a;
-}
+:root[data-theme='light']{ --bg:#f8fafc; --text:#0f172a; --muted:#334155; --card:#ffffff; --border:#e2e8f0; --accent:#16a34a; --btn:#1d4ed8; --danger:#dc2626; --warn:#d97706; --ok:#16a34a; }
 *{box-sizing:border-box}html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif}
 .container{max-width:1100px;margin:0 auto;padding:16px}
 .app-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:color-mix(in oklab, var(--bg) 80%, black 10%);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10}
@@ -39,3 +35,17 @@ button:disabled{opacity:.6;cursor:not-allowed}
 .toast.error{border-left-color:var(--danger)}
 .toast.warn{border-left-color:var(--warn)}
 @keyframes pop{from{transform:translateY(6px);opacity:.0}to{transform:translateY(0);opacity:.98}}
+.logo img{height:32px;width:auto;display:block;}
+
+/* Il compenso non viene mostrato quando la paga oraria non è impostata. */
+.table.hide-pay th:last-child, .table.hide-pay td.p { display: none; }
+
+/* Keep navigation readable without covering forms on small screens. */
+@media (max-width:800px){
+  .app-header{position:static;flex-direction:column;align-items:stretch;gap:12px}
+  .nav{width:100%;gap:8px}
+  .grid>*{min-width:0}
+  input{max-width:100%;min-width:0}
+  #tableWrap,#reportTable{max-width:100%;overflow-x:auto}
+  .box{overflow-wrap:anywhere}
+}

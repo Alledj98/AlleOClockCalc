@@ -1,10 +1,8 @@
-<!doctype html>
-<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Guida · AlleOClockCalc</title><link rel="stylesheet" href="css/style.css"></head>
-<body>
-<header class="app-header">
-  <div style="display:flex;gap:8px;align-items:center">
-    <h1 data-i18n="app_title" style="margin:0">AlleOClockCalc</h1>
+<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Guida · AlleOClockCalc</title><link rel="manifest" href="manifest.webmanifest"><link rel="stylesheet" href="css/style.css?v=phase2-20261113"><meta name="theme-color" content="#0f172a"></head>
+<body><header class="app-header">
+  <div style="display:flex;gap:10px;align-items:center">
+    <a href="index.html" class="logo" aria-label="Home"><img src="img/logo.svg" alt="AlleOClockCalc"></a>
     <button id="themeToggle" class="chip">🌓</button>
   </div>
   <nav class="nav">
@@ -13,25 +11,17 @@
     <a href="report.html" class="requires-auth disabled" data-i18n="nav_reports">Report & PDF</a>
     <a href="employer.html" class="requires-auth disabled" data-i18n="nav_employer">Dashboard Datore</a>
     <a href="guide.html" data-i18n="nav_guide">Guida</a>
-    <div class="lang-switch">
-      <select id="langSel"><option value="it">IT</option><option value="en">EN</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option></select>
-    </div>
+    <select id="langSelect" class="chip"><option value="it">IT</option><option value="en">EN</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option></select>
   </nav>
-</header>
-<main class="container">
+</header><main class="container">
   <div class="card"><h2>Guida all'uso</h2>
-  <p>• Lavoratore: compila Giornaliero/Mensile, genera PDF dal Report. Puoi caricarlo su Storage, inviarlo via email (tester SMTP con <b>Ctrl+Click</b>) ed esportare CSV/Excel.<br>
-  • Datore: registrati come Datore, copia il tuo codice e condividilo. Vedi gli invii nella Dashboard.</p>
-  <p>Nota: i dati giornalieri restano privati al lavoratore; il datore vede solo gli invii.</p></div>
+    <ul>
+      <li>Compila <b>Giornaliero</b> o <b>Mensile</b> (supporto notturni).</li>
+      <li>Genera <b>PDF</b>, invia al datore (tester SMTP con <b>Ctrl+Click</b>), esporta <b>CSV/Excel</b>.</li>
+      <li>Il <b>Datore</b> può approvare/rifiutare invii e riceverai un’email.</li>
+      <li>PWA: installa l’app dal browser per l’uso offline.</li>
+    </ul>
+  </div>
 </main>
-<div id="loader" class="hidden"><div class="spinner"></div></div>
-<div id="toastWrap"></div>
-<script type="module">
-  import * as theme from './js/theme.js';
-  import { loadI18n, applyI18n, currentLang, setLang } from './js/i18n.js';
-  document.getElementById('themeToggle').addEventListener('click', ()=> theme.toggleTheme());
-  const sel=document.getElementById('langSel'); sel.value=currentLang(); sel.addEventListener('change', e=> setLang(e.target.value));
-  (async()=> applyI18n(await loadI18n(currentLang())))();
-</script>
-
-</body></html>
+<div id="loader" class="hidden"><div class="spinner"></div></div><div id="toastWrap"></div>
+<script type="module">import * as theme from './js/theme.js'; import './js/pwa.js'; import './js/i18n.js';</script></body></html>

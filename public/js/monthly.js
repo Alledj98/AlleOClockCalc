@@ -1,97 +1,236 @@
-import { auth, db, doc, getDoc, setDoc, writeBatch, onAuthStateChanged } from './app.js';
-import { showLoader, hideLoader, showError, showToast } from './ui.js';
+import {
+  auth,
+  db,
+  doc,
+  getDoc,
+  setDoc,
+  writeBatch,
+  onAuthStateChanged,
+  collection,
+  getDocs,
+  query,
+  where,
+  orderBy,
+} from "./app.js";
+import { showLoader, hideLoader, showError, showToast } from "./ui.js";
+import { diffMinutes, minutesToHM, validateShiftPair } from "./timeutil.js";
+import * as I18N from "./i18n.js";
 
-const monthPicker=document.getElementById('monthPicker');
-const rateEl=document.getElementById('hourlyRate');
-const tableWrap=document.getElementById('tableWrap');
-const monthHoursEl=document.getElementById('monthHours');
-const monthPayEl=document.getElementById('monthPay');
+const monthPicker = document.getElementById("monthPicker");
+const rateEl = document.getElementById("hourlyRate");
+const tableWrap = document.getElementById("tableWrap");
+const monthHoursEl = document.getElementById("monthHours");
+const monthPayEl = document.getElementById("monthPay");
+const saveBtn = document.getElementById("btnSave");
+let loadedMonth = null;
+let existingDates = new Set();
+let requestVersion = 0;
+saveBtn.disabled = true;
 
-function daysInMonth(y,m){ return new Date(y,m+1,0).getDate(); }
-function diff(a,b){ if(!a||!b) return 0; const [h1,m1]=a.split(':').map(Number),[h2,m2]=b.split(':').map(Number); let t1=h1*60+m1,t2=h2*60+m2; if(t2<t1)t2+=1440; return (t2-t1)/60; }
-
-function headerHtml(){
-  return `<thead><tr>
-    <th data-i18n="th_day">Day</th>
-    <th data-i18n="th_off">Off</th>
-    <th data-i18n="th_m_in">M IN</th>
-    <th data-i18n="th_m_out">M OUT</th>
-    <th data-i18n="th_e_in">E IN</th>
-    <th data-i18n="th_e_out">E OUT</th>
-    <th data-i18n="th_hours">Hours</th>
-    <th data-i18n="th_euro">€</th>
-  </tr></thead>`;
+function daysInMonth(year, monthIndex) {
+  return new Date(year, monthIndex + 1, 0).getDate();
 }
-
-function build(){
-  tableWrap.innerHTML='';
-  const [Y,M]=monthPicker.value.split('-').map(Number);
-  const d=daysInMonth(Y,M-1);
-  const t=document.createElement('table'); t.className='table';
-  t.innerHTML=headerHtml();
-  const tb=document.createElement('tbody');
-  for(let i=1;i<=d;i++){ const tr=document.createElement('tr'); tr.innerHTML=`<td>${i}</td>
-    <td><input type="checkbox" class="off"></td>
-    <td><input type="time" class="mi"></td>
-    <td><input type="time" class="mo"></td>
-    <td><input type="time" class="ei"></td>
-    <td><input type="time" class="eo"></td>
-    <td class="h">0.00</td><td class="p">0.00</td>`; tb.appendChild(tr); }
-  t.appendChild(tb); tableWrap.appendChild(t);
-  t.addEventListener('input', recalc);
+function selectedMonth() {
+  const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(monthPicker.value);
+  if (!match) throw new Error("Seleziona un mese valido.");
+  return {
+    year: Number(match[1]),
+    month: Number(match[2]),
+    key: monthPicker.value,
+  };
+}
+function build() {
+  loadedMonth = null;
+  existingDates = new Set();
+  saveBtn.disabled = true;
+  requestVersion++; // invalida eventuali letture di un mese precedente
+  const { year, month } = selectedMonth();
+  const table = document.createElement("table");
+  table.className = "table";
+  const title = (key) => I18N.t(key);
+  table.innerHTML = `<thead><tr><th>${title("th_day")}</th><th>${title("th_off")}</th><th>${title("th_m_in")}</th><th>${title("th_m_out")}</th><th>${title("th_e_in")}</th><th>${title("th_e_out")}</th><th>${title("th_hours")}</th><th>${title("th_euro")}</th></tr></thead>`;
+  const body = document.createElement("tbody");
+  for (let day = 1; day <= daysInMonth(year, month - 1); day++) {
+    const row = document.createElement("tr");
+    row.innerHTML = `<td>${day}</td><td><input type="checkbox" class="off"></td><td><input type="time" class="mi"></td><td><input type="time" class="mo"></td><td><input type="time" class="ei"></td><td><input type="time" class="eo"></td><td class="h">0.00</td><td class="p">0.00</td>`;
+    body.appendChild(row);
+  }
+  table.appendChild(body);
+  tableWrap.replaceChildren(table);
+  table.addEventListener("input", recalc);
   recalc();
-  import('./i18n.js').then(m=> m.loadI18n(m.currentLang()).then(map=> m.applyI18n(map)));
 }
-
-function recalc(){
-  const r=parseFloat(rateEl.value)||0; let H=0,P=0;
-  tableWrap.querySelectorAll('tbody tr').forEach(tr=>{
-    const off=tr.querySelector('.off').checked; let h=0;
-    if(!off){ h+=diff(tr.querySelector('.mi').value,tr.querySelector('.mo').value); h+=diff(tr.querySelector('.ei').value,tr.querySelector('.eo').value); }
-    const p=h*r; tr.querySelector('.h').textContent=h.toFixed(2); tr.querySelector('.p').textContent=p.toFixed(2); H+=h; P+=p;
+function recalc() {
+  const rate = Math.max(0, Number(rateEl.value) || 0);
+  let minutesTotal = 0;
+  let payTotal = 0;
+  tableWrap.querySelectorAll("tbody tr").forEach((row) => {
+    const off = row.querySelector(".off").checked;
+    const minutes = off
+      ? 0
+      : diffMinutes(
+          row.querySelector(".mi").value,
+          row.querySelector(".mo").value,
+        ) +
+        diffMinutes(
+          row.querySelector(".ei").value,
+          row.querySelector(".eo").value,
+        );
+    const pay = (minutes / 60) * rate;
+    row.querySelector(".h").textContent = minutesToHM(minutes);
+    row.querySelector(".p").textContent = pay.toFixed(2);
+    minutesTotal += minutes;
+    payTotal += pay;
   });
-  monthHoursEl.textContent=H.toFixed(2); monthPayEl.textContent=P.toFixed(2);
+  monthHoursEl.textContent = minutesToHM(minutesTotal);
+  monthPayEl.textContent = payTotal.toFixed(2);
+  monthPayEl.parentElement.style.display = rate > 0 ? "" : "none";
+  tableWrap.querySelector("table")?.classList.toggle("hide-pay", rate <= 0);
+}
+async function autoLoadMonth() {
+  const user = auth.currentUser;
+  if (!user) return;
+  const { year, month, key } = selectedMonth();
+  const version = ++requestVersion;
+  loadedMonth = null;
+  saveBtn.disabled = true;
+  const start = `${key}-01`;
+  const end = `${key}-${String(daysInMonth(year, month - 1)).padStart(2, "0")}`;
+  showLoader();
+  try {
+    const entries = await getDocs(
+      query(
+        collection(db, `users/${user.uid}/entries`),
+        where("date", ">=", start),
+        where("date", "<=", end),
+        orderBy("date", "asc"),
+      ),
+    );
+    if (version !== requestVersion || monthPicker.value !== key) return;
+    const values = new Map(
+      entries.docs.map((entry) => [entry.id, entry.data()]),
+    );
+    existingDates = new Set(values.keys());
+    tableWrap.querySelectorAll("tbody tr").forEach((row, index) => {
+      const day = String(index + 1).padStart(2, "0");
+      const entry = values.get(`${key}-${day}`);
+      row.querySelector(".off").checked = !!entry?.dayOff;
+      row.querySelector(".mi").value = entry?.morningIn || "";
+      row.querySelector(".mo").value = entry?.morningOut || "";
+      row.querySelector(".ei").value = entry?.eveningIn || "";
+      row.querySelector(".eo").value = entry?.eveningOut || "";
+    });
+    recalc();
+    loadedMonth = key;
+    saveBtn.disabled = false;
+  } catch (error) {
+    if (version === requestVersion)
+      showError(`Impossibile caricare il mese: ${error.message}`);
+  } finally {
+    hideLoader();
+  }
 }
 
-monthPicker.addEventListener('change', build);
-
-document.getElementById('btnLoad').addEventListener('click', async ()=>{
-  try{
-    const u=auth.currentUser; if(!u) return; const [Y,M]=monthPicker.value.split('-').map(Number); const D=new Date(Y,M,0).getDate();
-    showLoader();
-    const rows = tableWrap.querySelectorAll('tbody tr');
-    for(let i=1;i<=D;i++){ const date=`${Y}-${String(M).padStart(2,'0')}-${String(i).padStart(2,'0')}`; const s=await getDoc(doc(db,`users/${u.uid}/entries/${date}`));
-      if(s.exists()){ const x=s.data(); const tr=rows[i-1]; tr.querySelector('.off').checked=!!x.dayOff;
-        tr.querySelector('.mi').value=x.morningIn||''; tr.querySelector('.mo').value=x.morningOut||''; tr.querySelector('.ei').value=x.eveningIn||''; tr.querySelector('.eo').value=x.eveningOut||''; }
-    }
-    recalc(); showToast('Mese caricato ✅');
-  }catch(e){ showError(e.message); }
-  finally{ hideLoader(); }
+monthPicker.addEventListener("change", () => {
+  try {
+    build();
+    autoLoadMonth();
+  } catch (error) {
+    showError(error.message);
+  }
 });
-
-document.getElementById('btnSave').addEventListener('click', async ()=>{
-  try{
-    const u=auth.currentUser; if(!u) return; const [Y,M]=monthPicker.value.split('-').map(Number); const r=parseFloat(rateEl.value)||0;
-    showLoader();
-    const wb=writeBatch(db); const rows=tableWrap.querySelectorAll('tbody tr');
-    rows.forEach((tr,idx)=>{
-      const i=idx+1; const date=`${Y}-${String(M).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
-      const off=tr.querySelector('.off').checked, mi=tr.querySelector('.mi').value||null, mo=tr.querySelector('.mo').value||null, ei=tr.querySelector('.ei').value||null, eo=tr.querySelector('.eo').value||null;
-      const h=parseFloat(tr.querySelector('.h').textContent)||0, p=parseFloat(tr.querySelector('.p').textContent)||0;
-      const ref=doc(db,`users/${u.uid}/entries/${date}`);
-      wb.set(ref,{ uid:u.uid,date,dayOff:off,morningIn:mi,morningOut:mo,eveningIn:ei,eveningOut:eo,hourlyRate:r,totalHours:h,totalPay:p,updatedAt:Date.now() },{merge:true});
+rateEl.addEventListener("input", recalc);
+document.getElementById("btnLoad").addEventListener("click", autoLoadMonth);
+saveBtn.addEventListener("click", async () => {
+  const user = auth.currentUser;
+  if (!user) return;
+  if (loadedMonth !== monthPicker.value) {
+    showError(
+      "Carica prima il mese: impediamo di sovrascrivere turni non letti.",
+    );
+    return;
+  }
+  const { key } = selectedMonth();
+  const rate = Number(rateEl.value);
+  if (!Number.isFinite(rate) || rate < 0 || rate > 10000) {
+    showError("Paga oraria non valida.");
+    return;
+  }
+  saveBtn.disabled = true;
+  [monthPicker,rateEl,document.getElementById("btnLoad"),...tableWrap.querySelectorAll("input")].forEach(input=>{input.disabled=true;});
+  showLoader();
+  try {
+    const batch = writeBatch(db);
+    let modifiedRows = 0;
+    tableWrap.querySelectorAll("tbody tr").forEach((row, index) => {
+      const date = `${key}-${String(index + 1).padStart(2, "0")}`;
+      const off = row.querySelector(".off").checked;
+      const mi = row.querySelector(".mi").value || null;
+      const mo = row.querySelector(".mo").value || null;
+      const ei = row.querySelector(".ei").value || null;
+      const eo = row.querySelector(".eo").value || null;
+      // Non creare documenti vuoti per tutti i giorni di un nuovo mese.
+      // I giorni già registrati restano modificabili, anche per svuotarli.
+      if (!off && !mi && !mo && !ei && !eo && !existingDates.has(date)) return;
+      if (!off) {
+        validateShiftPair(mi, mo, `Giorno ${index + 1}, mattina`);
+        validateShiftPair(ei, eo, `Giorno ${index + 1}, sera`);
+      }
+      const minutes = off ? 0 : diffMinutes(mi, mo) + diffMinutes(ei, eo);
+      if (minutes > 1440)
+        throw new Error(`Giorno ${index + 1}: i turni superano le 24 ore.`);
+      batch.set(
+        doc(db, `users/${user.uid}/entries/${date}`),
+        {
+          uid: user.uid,
+          date,
+          dayOff: off,
+          morningIn: mi,
+          morningOut: mo,
+          eveningIn: ei,
+          eveningOut: eo,
+          hourlyRate: rate,
+          totalMinutes: minutes,
+          totalPay: (minutes / 60) * rate,
+          updatedAt: Date.now(),
+        },
+        { merge: true },
+      );
+      modifiedRows++;
     });
-    await wb.commit(); await setDoc(doc(db,`users/${u.uid}`),{hourlyRate:r},{merge:true});
-    showToast('Mese salvato ✅');
-  }catch(e){ showError(e.message); }
-  finally{ hideLoader(); }
+    batch.set(
+      doc(db, `users/${user.uid}`),
+      { hourlyRate: rate },
+      { merge: true },
+    );
+    await batch.commit();
+    showToast("Mese salvato ✅");
+    await autoLoadMonth();
+  } catch (error) {
+    showError(error.message);
+  } finally {
+    [monthPicker,rateEl,document.getElementById("btnLoad"),...tableWrap.querySelectorAll("input")].forEach(input=>{input.disabled=false;});
+    saveBtn.disabled = loadedMonth !== monthPicker.value;
+    hideLoader();
+  }
 });
 
-onAuthStateChanged(auth, async (user)=>{
-  try{
-    if(!user){ window.location.href='index.html'; return; }
-    document.querySelectorAll('.auth-required').forEach(el=> el.style.display='block');
-    const prof=await getDoc(doc(db,`users/${user.uid}`)); rateEl.value=prof.data()?.hourlyRate ?? 10;
-    const now=new Date(); monthPicker.value=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`; build();
-  }catch(e){ showError(e.message); }
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    location.href = "index.html";
+    return;
+  }
+  document.querySelectorAll(".auth-required").forEach((el) => {
+    el.style.display = "block";
+  });
+  try {
+    const profile = await getDoc(doc(db, `users/${user.uid}`));
+    rateEl.value = profile.data()?.hourlyRate ?? 10;
+    const today = new Date();
+    monthPicker.value = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+    build();
+    await autoLoadMonth();
+  } catch (error) {
+    showError(error.message);
+  }
 });

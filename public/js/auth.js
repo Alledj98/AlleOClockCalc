@@ -1,69 +1,136 @@
-import { auth, gProvider, onAuthStateChanged, signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, db, doc, getDoc, setDoc } from './app.js';
-import { gateNav, showError, showToast } from './ui.js';
+import {
+  auth,
+  fns,
+  gProvider,
+  onAuthStateChanged,
+  signInWithPopup,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  httpsCallable,
+  sendEmailVerification,
+  sendPasswordResetEmail,
+} from "./app.js";
+import { gateNav, showError, showToast } from "./ui.js";
+const email = document.getElementById("email");
+const password = document.getElementById("password");
+const role = document.getElementById("role");
 
-const email = document.getElementById('email');
-const password = document.getElementById('password');
-const roleSel = document.getElementById('role');
-const empCode = document.getElementById('empCode');
-const btnIn = document.getElementById('btnSignIn');
-const btnUp = document.getElementById('btnSignUp');
-const btnGoogle = document.getElementById('btnGoogle');
-const btnSetEmployer = document.getElementById('btnSetEmployer');
-
-btnIn?.addEventListener('click', async ()=>{
-  try {
-    await signInWithEmailAndPassword(auth, email.value, password.value);
-    const prof = await getDoc(doc(db,`users/${auth.currentUser.uid}`));
-    showToast('Accesso effettuato');
-    if (prof.data()?.role==='employer') window.location.href='employer.html'; else window.location.href='monthly.html';
-  } catch(e){ showError(e.message); }
-});
-btnUp?.addEventListener('click', async ()=>{
-  try {
-    const cred = await createUserWithEmailAndPassword(auth, email.value, password.value);
-    const user = cred.user;
-    const role = roleSel?.value || 'employee';
-    await setDoc(doc(db,`users/${user.uid}`), { uid:user.uid, email:user.email, role, createdAt: Date.now() }, { merge:true });
-    if (role==='employer') {
-      const code = Math.random().toString(36).slice(2,10).toUpperCase();
-      await setDoc(doc(db,`employers/${user.uid}`), { uid:user.uid, code, createdAt: Date.now() });
-      await setDoc(doc(db,`codes/${code}`), { employerUid:user.uid });
-      showToast('Registrazione completata');
-      window.location.href='employer.html';
-    } else {
-      if (empCode?.value) {
-        const snap = await getDoc(doc(db,`codes/${empCode.value.trim().toUpperCase()}`));
-        if (snap.exists()) await setDoc(doc(db,`users/${user.uid}`), { employerUid: snap.data().employerUid }, { merge:true });
-      }
-      showToast('Registrazione completata');
-      window.location.href='monthly.html';
+async function finishLogin(user) {
+  const profile = await httpsCallable(
+    fns,
+    "ensureProfile",
+  )({ role: role?.value || "employee" });
+  const code = document.getElementById("empCode")?.value.trim();
+  if (code && profile.data.role === "employee") {
+    try {
+      await httpsCallable(fns, "linkEmployer")({ code });
+    } catch (error) {
+      showError(
+        `Accesso riuscito, collegamento datore non completato: ${error.message}`,
+      );
+      return;
     }
-  } catch(e){ showError(e.message); }
-});
-btnGoogle?.addEventListener('click', async ()=>{
-  try { const cred = await signInWithPopup(auth, gProvider);
-    const user=cred.user; const exists = await getDoc(doc(db,`users/${user.uid}`));
-    if (!exists.exists()) await setDoc(doc(db,`users/${user.uid}`), { uid:user.uid, email:user.email, role:'employee', createdAt: Date.now() });
-    showToast('Accesso con Google');
-    window.location.href='monthly.html';
-  } catch(e){ showError(e.message); }
-});
-
-btnSetEmployer?.addEventListener('click', async ()=>{
-  try{
-    const user = auth.currentUser; if(!user) return;
-    const code = (document.getElementById('empCodeProfile')?.value || '').trim().toUpperCase();
-    if (!code) return showError(document.querySelector('[data-i18n="need_code"]').textContent || 'Enter employer code');
-    const s = await getDoc(doc(db,`codes/${code}`));
-    if (!s.exists()) return showError(document.querySelector('[data-i18n="invalid_code"]').textContent || 'Invalid employer code');
-    await setDoc(doc(db,`users/${user.uid}`), { employerUid: s.data().employerUid }, { merge:true });
-    showToast(document.querySelector('[data-i18n="code_saved"]').textContent || 'Employer code linked');
-  }catch(e){ showError(e.message); }
-});
-
-onAuthStateChanged(auth, async (user)=>{
-  const authed = !!user; gateNav(authed);
-  if (authed) {
-    document.querySelectorAll('.auth-required').forEach(el=> el.style.display='block');
   }
+  if (!user.emailVerified) {
+    showToast(
+      "Account pronto. Verifica l’email prima di inviare report. Puoi richiedere il messaggio da questa pagina.",
+      "warn",
+      8000,
+    );
+    return;
+  }
+  location.href =
+    profile.data.role === "employer" ? "employer.html" : "monthly.html";
+}
+async function action(button, task) {
+  button.disabled = true;
+  try {
+    await task();
+  } catch (error) {
+    showError(error.message);
+  } finally {
+    button.disabled = false;
+  }
+}
+document.getElementById("btnSignIn")?.addEventListener("click", (event) =>
+  action(event.currentTarget, async () => {
+    const result = await signInWithEmailAndPassword(
+      auth,
+      email.value.trim(),
+      password.value,
+    );
+    await finishLogin(result.user);
+  }),
+);
+document.getElementById("btnSignUp")?.addEventListener("click", (event) =>
+  action(event.currentTarget, async () => {
+    const result = await createUserWithEmailAndPassword(
+      auth,
+      email.value.trim(),
+      password.value,
+    );
+    await finishLogin(result.user);
+    try {
+      await sendEmailVerification(result.user);
+      showToast("Email di verifica inviata.", "ok", 6000);
+    } catch {
+      showError(
+        "Account creato. Richiedi nuovamente l’email di verifica con il pulsante dedicato.",
+      );
+    }
+  }),
+);
+document.getElementById("btnGoogle")?.addEventListener("click", (event) =>
+  action(event.currentTarget, async () => {
+    const result = await signInWithPopup(auth, gProvider);
+    await finishLogin(result.user);
+  }),
+);
+document.getElementById("btnVerifyEmail")?.addEventListener("click", (event) =>
+  action(event.currentTarget, async () => {
+    if (!auth.currentUser)
+      throw new Error("Accedi prima di richiedere la verifica.");
+    await auth.currentUser.reload();
+    if (auth.currentUser.emailVerified) {
+      await auth.currentUser.getIdToken(true);
+      showToast("Email verificata.");
+      return;
+    }
+    await sendEmailVerification(auth.currentUser);
+    showToast(
+      "Email inviata. Dopo la verifica, esci e accedi nuovamente.",
+      "ok",
+      7000,
+    );
+  }),
+);
+document
+  .getElementById("btnResetPassword")
+  ?.addEventListener("click", (event) =>
+    action(event.currentTarget, async () => {
+      if (!email.value.trim())
+        throw new Error("Inserisci il tuo indirizzo email.");
+      await sendPasswordResetEmail(auth, email.value.trim());
+      showToast(
+        "Se l’account esiste, riceverai le istruzioni per reimpostare la password.",
+      );
+    }),
+  );
+document.getElementById("btnSignOut")?.addEventListener("click", async () => {
+  await signOut(auth);
+  location.href = "index.html";
+});
+document.getElementById("btnSetEmployer")?.addEventListener("click", (event) =>
+  action(event.currentTarget, async () => {
+    const code = document.getElementById("empCodeProfile").value.trim();
+    await httpsCallable(fns, "linkEmployer")({ code });
+    showToast("Datore collegato.");
+  }),
+);
+onAuthStateChanged(auth, (user) => {
+  gateNav(!!user);
+  document.querySelectorAll(".auth-required").forEach((element) => {
+    element.style.display = user ? "block" : "none";
+  });
 });

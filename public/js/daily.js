@@ -1,47 +1,143 @@
-import { auth, db, doc, getDoc, setDoc, onAuthStateChanged } from './app.js';
-import { showLoader, hideLoader, showError, showToast } from './ui.js';
-
-const dateEl = document.getElementById('date');
-const rateEl = document.getElementById('hourlyRate');
-const dayOffEl = document.getElementById('dayOff');
-const mInEl = document.getElementById('mIn');
-const mOutEl = document.getElementById('mOut');
-const eInEl = document.getElementById('eIn');
-const eOutEl = document.getElementById('eOut');
-const dailyHoursEl = document.getElementById('dailyHours');
-const dailyPayEl = document.getElementById('dailyPay');
-
-function diff(a,b){ if(!a||!b) return 0; const [h1,m1]=a.split(':').map(Number),[h2,m2]=b.split(':').map(Number); let t1=h1*60+m1,t2=h2*60+m2; if(t2<t1)t2+=1440; return (t2-t1)/60; }
-function recalc(){ const r=parseFloat(rateEl.value)||0; let h=0; if(!dayOffEl.checked){ h+=diff(mInEl.value,mOutEl.value); h+=diff(eInEl.value,eOutEl.value);} dailyHoursEl.textContent=h.toFixed(2); dailyPayEl.textContent=(h*r).toFixed(2); }
-[mInEl,mOutEl,eInEl,eOutEl,rateEl,dayOffEl].forEach(x=>x.addEventListener('input',recalc));
-
-onAuthStateChanged(auth, async (user)=>{
-  try{
-    if(!user){ window.location.href='index.html'; return; }
-    document.querySelectorAll('.auth-required').forEach(el=> el.style.display='block');
-    const now=new Date(); dateEl.value=now.toISOString().slice(0,10);
-    const prof=await getDoc(doc(db,`users/${user.uid}`)); rateEl.value=prof.data()?.hourlyRate ?? 10;
-  }catch(e){ showError(e.message); }
+import {
+  auth,
+  db,
+  doc,
+  getDoc,
+  setDoc,
+  onAuthStateChanged,
+  writeBatch,
+} from "./app.js";
+import { showLoader, hideLoader, showError, showToast } from "./ui.js";
+import { diffMinutes, minutesToHM, validateShiftPair } from "./timeutil.js";
+const dateEl = document.getElementById("date"),
+  rateEl = document.getElementById("hourlyRate"),
+  dayOffEl = document.getElementById("dayOff");
+const mInEl = document.getElementById("mIn"),
+  mOutEl = document.getElementById("mOut"),
+  eInEl = document.getElementById("eIn"),
+  eOutEl = document.getElementById("eOut");
+const dailyHoursEl = document.getElementById("dailyHours"),
+  dailyPayEl = document.getElementById("dailyPay");
+const saveBtn = document.getElementById("btnSave");
+let loadedDate = null,
+  loadVersion = 0;
+function rate() {
+  const value = Number(rateEl.value);
+  if (!Number.isFinite(value) || value < 0 || value > 10000)
+    throw new Error("Paga oraria non valida.");
+  return value;
+}
+function recalc() {
+  const value = Math.max(0, Number(rateEl.value) || 0);
+  const minutes = dayOffEl.checked
+    ? 0
+    : diffMinutes(mInEl.value, mOutEl.value) +
+      diffMinutes(eInEl.value, eOutEl.value);
+  dailyHoursEl.textContent = minutesToHM(minutes);
+  dailyPayEl.textContent = ((minutes / 60) * value).toFixed(2);
+  dailyPayEl.parentElement.style.display = value > 0 ? "" : "none";
+}
+[mInEl, mOutEl, eInEl, eOutEl, rateEl, dayOffEl].forEach((input) =>
+  input.addEventListener("input", recalc),
+);
+async function loadDay() {
+  const user = auth.currentUser;
+  if (!user) return;
+  const date = dateEl.value;
+  if (!/^20\d{2}-\d{2}-\d{2}$/.test(date)) {
+    showError("Seleziona una data valida.");
+    return;
+  }
+  const version = ++loadVersion;
+  loadedDate = null;
+  saveBtn.disabled = true;
+  showLoader();
+  try {
+    const snapshot = await getDoc(doc(db, `users/${user.uid}/entries/${date}`));
+    if (version !== loadVersion || dateEl.value !== date) return;
+    const entry = snapshot.data() || {};
+    dayOffEl.checked = !!entry.dayOff;
+    mInEl.value = entry.morningIn || "";
+    mOutEl.value = entry.morningOut || "";
+    eInEl.value = entry.eveningIn || "";
+    eOutEl.value = entry.eveningOut || "";
+    if (entry.hourlyRate != null) rateEl.value = entry.hourlyRate;
+    loadedDate = date;
+    saveBtn.disabled = false;
+    recalc();
+  } catch (error) {
+    showError(error.message);
+  } finally {
+    hideLoader();
+  }
+}
+dateEl.addEventListener("change", loadDay);
+document.getElementById("btnLoad").addEventListener("click", loadDay);
+saveBtn.addEventListener("click", async () => {
+  const user = auth.currentUser;
+  if (!user) return;
+  if (loadedDate !== dateEl.value) {
+    showError("Carica prima la data selezionata.");
+    return;
+  }
+  saveBtn.disabled = true;
+  [dateEl,rateEl,dayOffEl,mInEl,mOutEl,eInEl,eOutEl,document.getElementById("btnLoad")].forEach(input=>{input.disabled=true;});
+  showLoader();
+  try {
+    const hourlyRate = rate();
+    if (!dayOffEl.checked) {
+      validateShiftPair(mInEl.value, mOutEl.value, "Mattina");
+      validateShiftPair(eInEl.value, eOutEl.value, "Sera");
+    }
+    const minutes = dayOffEl.checked
+      ? 0
+      : diffMinutes(mInEl.value, mOutEl.value) +
+        diffMinutes(eInEl.value, eOutEl.value);
+    if (minutes > 1440) throw new Error("I turni superano le 24 ore.");
+    const batch = writeBatch(db);
+    batch.set(
+      doc(db, `users/${user.uid}/entries/${dateEl.value}`),
+      {
+        uid: user.uid,
+        date: dateEl.value,
+        dayOff: dayOffEl.checked,
+        morningIn: mInEl.value || null,
+        morningOut: mOutEl.value || null,
+        eveningIn: eInEl.value || null,
+        eveningOut: eOutEl.value || null,
+        hourlyRate,
+        totalMinutes: minutes,
+        totalPay: (minutes / 60) * hourlyRate,
+        updatedAt: Date.now(),
+      },
+      { merge: true },
+    );
+    batch.set(doc(db, `users/${user.uid}`), { hourlyRate }, { merge: true });
+    await batch.commit();
+    showToast("Giorno salvato");
+  } catch (error) {
+    showError(error.message);
+  } finally {
+    [dateEl,rateEl,dayOffEl,mInEl,mOutEl,eInEl,eOutEl,document.getElementById("btnLoad")].forEach(input=>{input.disabled=false;});
+    saveBtn.disabled = loadedDate !== dateEl.value;
+    hideLoader();
+  }
 });
-
-document.getElementById('btnSave').addEventListener('click', async ()=>{
-  try{
-    const u=auth.currentUser; if(!u) return; const d=dateEl.value;
-    const hours=parseFloat(dailyHoursEl.textContent)||0, pay=parseFloat(dailyPayEl.textContent)||0, rate=parseFloat(rateEl.value)||0;
-    showLoader();
-    await setDoc(doc(db,`users/${u.uid}/entries/${d}`),{ uid:u.uid,date:d, dayOff:dayOffEl.checked, morningIn:mInEl.value||null, morningOut:mOutEl.value||null, eveningIn:eInEl.value||null, eveningOut:eOutEl.value||null, hourlyRate:rate, totalHours:hours, totalPay:pay, updatedAt:Date.now() },{merge:true});
-    await setDoc(doc(db,`users/${u.uid}`),{hourlyRate:rate},{merge:true});
-    showToast('Giorno salvato ✅');
-  }catch(e){ showError(e.message); }
-  finally{ hideLoader(); }
-});
-
-document.getElementById('btnLoad').addEventListener('click', async ()=>{
-  try{
-    const u=auth.currentUser; if(!u) return; const d=dateEl.value; showLoader();
-    const s=await getDoc(doc(db,`users/${u.uid}/entries/${d}`));
-    if(!s.exists()){ showToast('Nessun dato per questa data','warn'); return; }
-    const x=s.data(); dayOffEl.checked=!!x.dayOff; mInEl.value=x.morningIn||''; mOutEl.value=x.morningOut||''; eInEl.value=x.eveningIn||''; eOutEl.value=x.eveningOut||''; rateEl.value=x.hourlyRate ?? 10; recalc();
-  }catch(e){ showError(e.message); }
-  finally{ hideLoader(); }
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    location.href = "index.html";
+    return;
+  }
+  showLoader();
+  try {
+    const profile = await getDoc(doc(db, `users/${user.uid}`));
+    rateEl.value = profile.data()?.hourlyRate ?? 10;
+    const now = new Date();
+    dateEl.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    await loadDay();
+  } catch (error) {
+    showError(error.message);
+  } finally {
+    hideLoader();
+  }
 });

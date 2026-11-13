@@ -1,23 +1,42 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function isSignedIn() { return request.auth != null; }
-    function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
-
+    function owner(uid) { return request.auth != null && request.auth.uid == uid; }
     match /users/{uid} {
-      allow read, write: if isOwner(uid);
-      match /entries/{date} { allow read, write: if isOwner(uid); }
-      match /pdfs/{doc} { allow read, write: if isOwner(uid); }
+      allow read: if owner(uid);
+      // Profile creation, role and employer linkage are owned by authenticated backend functions.
+      allow update: if owner(uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hourlyRate', 'displayName', 'updatedAt'])
+        && (!('hourlyRate' in request.resource.data)
+          || (request.resource.data.hourlyRate is number
+            && request.resource.data.hourlyRate >= 0 && request.resource.data.hourlyRate <= 10000));
+      allow create, delete: if false;
+      match /entries/{date} {
+        allow read, delete: if owner(uid);
+        allow create, update: if owner(uid)
+          && request.resource.data.keys().hasOnly(['uid', 'date', 'dayOff', 'morningIn', 'morningOut', 'eveningIn', 'eveningOut', 'hourlyRate', 'totalMinutes', 'totalPay', 'updatedAt', 'totalHours'])
+          // Preserve the legacy field during merge saves; new clients use totalMinutes.
+          && (!('totalHours' in request.resource.data)
+            || (resource != null && 'totalHours' in resource.data
+              && request.resource.data.totalHours == resource.data.totalHours))
+          && request.resource.data.uid == uid && request.resource.data.date == date
+          && date.matches('20[0-9]{2}-[0-9]{2}-[0-9]{2}')
+          && request.resource.data.dayOff is bool
+          && request.resource.data.totalMinutes is int
+          && request.resource.data.totalMinutes >= 0 && request.resource.data.totalMinutes <= 1440
+          && request.resource.data.hourlyRate is number
+          && request.resource.data.hourlyRate >= 0 && request.resource.data.hourlyRate <= 10000
+          && request.resource.data.totalPay is number && request.resource.data.totalPay >= 0;
+      }
+      match /pdfs/{id} { allow read, write: if owner(uid); }
+      match /submissions/{id} { allow read: if owner(uid); allow write: if false; }
     }
-
-    match /employers/{employerUid} {
-      allow read, write: if isOwner(employerUid);
-      match /submissions/{subId} { allow read, write: if isOwner(employerUid); }
+    match /employers/{uid} {
+      allow read: if owner(uid);
+      allow write: if false;
+      match /submissions/{id} { allow read: if owner(uid); allow write: if false; }
     }
-
-    match /codes/{code} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
-    }
+    match /codes/{code} { allow read, write: if false; }
+    match /operationLimits/{id} { allow read, write: if false; }
   }
 }
