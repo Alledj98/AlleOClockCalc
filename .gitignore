@@ -67,3 +67,43 @@ node_modules/
 
 # dataconnect generated files
 .dataconnect
+
+# Credenziali e artefatti locali
+node_modules/
+functions/node_modules/
+.env
+.env.*
+functions/.env
+functions/.env.*
+*-debug.log
+firebase-debug.log
+
+# Export/repository protection: never commit local runtime configuration or data
+.runtimeconfig.json
+**/.runtimeconfig.json
+**/.env
+**/.env.*
+**/.secret.local
+**/.secrets.local
+*.pem
+*.key
+*.p12
+*.pfx
+*service-account*.json
+*serviceAccount*.json
+*-firebase-adminsdk-*.json
+credentials*.json
+baseline/
+backups/
+.private/
+results-phase2/
+export-github/
+output/
+tmp/
+tools/
+*.zip
+*.pdf
+*.xlsx
+*.csv
+firestore-export-*/
+firebase-export-*/

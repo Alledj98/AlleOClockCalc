@@ -1,10 +1,8 @@
-<!doctype html>
-<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Dashboard Datore · AlleOClockCalc</title><link rel="stylesheet" href="css/style.css"></head>
-<body>
-<header class="app-header">
-  <div style="display:flex;gap:8px;align-items:center">
-    <h1 data-i18n="app_title" style="margin:0">AlleOClockCalc</h1>
+<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard Datore · AlleOClockCalc</title><link rel="manifest" href="manifest.webmanifest"><link rel="stylesheet" href="css/style.css?v=phase2-20261113"><meta name="theme-color" content="#0f172a"></head>
+<body><header class="app-header">
+  <div style="display:flex;gap:10px;align-items:center">
+    <a href="index.html" class="logo" aria-label="Home"><img src="img/logo.svg" alt="AlleOClockCalc"></a>
     <button id="themeToggle" class="chip">🌓</button>
   </div>
   <nav class="nav">
@@ -13,28 +11,15 @@
     <a href="report.html" class="requires-auth disabled" data-i18n="nav_reports">Report & PDF</a>
     <a href="employer.html" class="requires-auth disabled" data-i18n="nav_employer">Dashboard Datore</a>
     <a href="guide.html" data-i18n="nav_guide">Guida</a>
-    <div class="lang-switch">
-      <select id="langSel"><option value="it">IT</option><option value="en">EN</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option></select>
-    </div>
+    <select id="langSelect" class="chip"><option value="it">IT</option><option value="en">EN</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option></select>
   </nav>
-</header>
-<main class="container">
+</header><main class="container">
   <div class="card auth-required" style="display:none">
-    <h2 data-i18n="dashboard_title">Dashboard Datore</h2>
-    <p><b data-i18n="employer_your_code">Il tuo codice datore</b>: <span id="myEmployerCode">—</span>
-      <button id="btnCopyCode" class="secondary" data-i18n="copy">Copia</button>
-    </p>
+    <h2>Dashboard Datore</h2>
+    <p><b>Il tuo codice datore</b>: <span id="myEmployerCode">—</span> <button id="btnCopyCode" class="secondary">Copia</button></p>
+    <h3>Approvazioni</h3>
     <div id="subs"></div>
   </div>
 </main>
-<div id="loader" class="hidden"><div class="spinner"></div></div>
-<div id="toastWrap"></div>
-<script type="module">
-  import * as theme from './js/theme.js';
-  import { loadI18n, applyI18n, currentLang, setLang } from './js/i18n.js';
-  document.getElementById('themeToggle').addEventListener('click', ()=> theme.toggleTheme());
-  const sel=document.getElementById('langSel'); sel.value=currentLang(); sel.addEventListener('change', e=> setLang(e.target.value));
-  (async()=> applyI18n(await loadI18n(currentLang())))();
-</script>
-<script type="module">import './js/app.js'; import './js/auth.js'; import './js/employer.js';</script>
-</body></html>
+<div id="loader" class="hidden"><div class="spinner"></div></div><div id="toastWrap"></div>
+<script type="module">import * as theme from './js/theme.js'; import './js/pwa.js'; import './js/i18n.js';</script><script type="module">import './js/app.js'; import './js/auth.js'; import './js/employer.js';</script></body></html>
